@@ -298,13 +298,13 @@ func generate(dirs []string) int {
 	// 	println(i, key)
 	// }
 	println("keys_unused ", keys_unused.Cardinality())
-	// for i, key := range sortedSet(keys_unused) {
-	// 	println(i, key)
-	// }
+	for i, key := range sortedSet(keys_unused) {
+		println(i, key)
+	}
 	println("keys_missing ", keys_missing.Cardinality())
-	// for i, key := range sortedSet(keys_missing) {
-	// 	println(i, key)
-	// }
+	for i, key := range sortedSet(keys_missing) {
+		println(i, key)
+	}
 
 	for _, strings_file := range strings_map {
 
