@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"sort"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -51,12 +52,22 @@ func glob(dir string, ext string) ([]string, error) {
 	err := filepath.Walk(dir, func(path string, f os.FileInfo, err error) error {
 		if filepath.Ext(path) == ext {
 			files = append(files, path)
-			// fmt.Printf("found %s (%s)\n", path, filepath.Ext(path))
 		}
 		return nil
 	})
 
 	return files, err
+}
+
+func sortedSet(s mapset.Set) ([]string) {
+        keys := make([]string, s.Cardinality())
+        i := 0
+        for k := range s.Iter() {
+            keys[i] = k.(string)
+            i++
+        }
+        sort.Strings(keys)
+        return keys
 }
 
 func strings_keys(dirs []string, yield func(path string, lc int, key string, value string, pre string, language string)) {
@@ -88,8 +99,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 					line := scanner.Text()
 					lc += 1
 
-					// fmt.Printf("LINE: %s\n", line)
-
 					if line == "" {
 						continue
 					} else {
@@ -106,7 +115,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 							switch {
 							case bytes.HasSuffix(buffer.Bytes(), []byte("\"")):
 								pre = string(bytes.TrimSuffix(b, []byte("\"")))
-								// fmt.Printf("PRE: %s\n", pre)
 								buffer.Reset()
 								buffer.WriteRune(c)
 								state = KEY
@@ -117,7 +125,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 							switch {
 							case bytes.HasSuffix(b, []byte("\"")):
 								key = string(bytes.TrimSuffix(b, []byte("\"")))
-								// fmt.Printf("KEY: %s\n", key)
 								buffer.Reset()
 								buffer.WriteRune(c)
 								state = EQUALS
@@ -128,7 +135,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 							switch {
 							case c == ' ':
 							case bytes.HasSuffix(b, []byte("=\"")):
-								// fmt.Printf("EQUALS:\n")
 								buffer.Reset()
 								buffer.WriteRune(c)
 								state = VALUE
@@ -139,7 +145,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 							switch {
 							case c == '\n' && bytes.HasSuffix(b, []byte("\";")):
 								value = string(bytes.TrimSuffix(b, []byte("\";")))
-								// fmt.Printf("VALUE: %s\n", value)
 								buffer.Reset()
 								buffer.WriteRune(c)
 								state = PRE
@@ -164,53 +169,6 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 	}
 }
 
-// func xib_keys(dirs []string, yield func(path string, key string)) {
-
-//   for _, dir := range dirs {
-//     // files, _ := filepath.Glob(dir + "/**/*.xib")
-//     files, _ := glob(dir, ".xib")
-//     for _, file := range files {
-//       // fmt.Printf("reading %s\n", file)
-//       content, _ := ioutil.ReadFile(file)
-
-//       doc, _ := gokogiri.ParseXml(content)
-//       defer doc.Free()
-
-//       nodes_title, _ := doc.Root().Search(xpath.Compile("//string[@key=\"NSTitle\"]"))
-//       for _, node := range nodes_title {
-//         key := node.Content()
-//         if key != "" {
-//           yield(file, key)
-//         }
-//       }
-
-//       nodes_responder, _ := doc.Root().Search(xpath.Compile("//label|//button|//textField"))
-//       for _, node := range nodes_responder {
-
-//         label := node.Attr("userLabel")
-//         if label == "" {
-//           nodes_userlabel, _ := node.Search(xpath.Compile("ancestor-or-self::*[@userLabel]/@userLabel"))
-//           if len(nodes_userlabel) > 0 {
-//             label = nodes_userlabel[0].Content()
-//           }
-//         }
-
-//         if label != "File's Owner" {
-//           for _, attr := range []string{ "text", "title", "placeholder" } {
-//             nodes_attributes, _ := node.Search(xpath.Compile(fmt.Sprintf(".//*[@%s]|.", attr)))
-//             for _, n := range nodes_attributes {
-//               key := n.Attr(attr)
-//               if key != "" {
-//                 // fmt.Printf(" %s = '%s' (%s)\n", attr, key, label)
-//                 yield(file, key)
-//               }
-//             }
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
 
 func code_keys(dirs []string, yield func(path string, lc int, key string)) {
 
@@ -218,7 +176,6 @@ func code_keys(dirs []string, yield func(path string, lc int, key string)) {
 	r, _ := regexp.Compile("\"(.*?)\".localized")
 
 	for _, dir := range dirs {
-		// files, _ := glob(dir, ".m")
 		files, _ := glob(dir, ".swift")
 
 		for _, file := range files {
@@ -313,23 +270,64 @@ func generate(dirs []string) int {
 		translation := Translation{pre, key, value, lc}
 
 		strings_file.translations = append(strings_file.translations, translation)
+
+		// println(strings_file.path, key, value, lc)
 	})
 
-	keys_unused := keys_available.Clone()
+	keys_used := mapset.NewThreadUnsafeSet()
 	keys_missing := mapset.NewThreadUnsafeSet()
 
 	// check keys in the code base
 	code_keys(dirs, func(path string, lc int, key string) {
-		// fmt.Printf("code: %s\n", key)
 		if keys_available.Contains(key) {
-			keys_unused.Remove(key)
+			keys_used.Add(key)
 		} else {
 			keys_missing.Add(key)
-			fmt.Printf("\"%s\" = \"%s\";\n", key, key)
-			// fmt.Printf("\"%s\" = \"%s\"; # %s:%d\n", key, key, path, lc)
 			ret = 1
 		}
 	})
+
+	keys_unused := keys_available.Difference(keys_used)
+
+	println("keys_available ", keys_available.Cardinality())
+	// for i, key := range sortedSet(keys_available) {
+	// 	println(i, key)
+	// }
+	println("keys_used ", keys_used.Cardinality())
+	// for i, key := range sortedSet(keys_used) {
+	// 	println(i, key)
+	// }
+	println("keys_unused ", keys_unused.Cardinality())
+	// for i, key := range sortedSet(keys_unused) {
+	// 	println(i, key)
+	// }
+	println("keys_missing ", keys_missing.Cardinality())
+	// for i, key := range sortedSet(keys_missing) {
+	// 	println(i, key)
+	// }
+
+	for _, strings_file := range strings_map {
+
+		f, err := os.OpenFile(strings_file.path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			log.Fatal("failed to open for write", strings_file.path)
+		}
+		defer f.Close()
+
+		fmt.Fprintf(f, "/* %s */\n\n", strings_file.language)
+
+		for _, key := range sortedSet(keys_used) {
+			translations := strings_file.Translations(key)
+			for _, translation := range translations {
+				// println(strings_file.path, key, translation.value)
+				fmt.Fprintf(f, "\"%s\" = \"%s\";\n", key, translation.value)
+			}
+		}
+
+		for _, key := range sortedSet(keys_missing) {
+			fmt.Fprintf(f, "\"%s\" = \"%s\"; # FIX\n", key, key)
+		}
+	}
 
 	return ret
 }
@@ -357,12 +355,13 @@ func check(dirs []string) int {
 		strings_file.translations = append(strings_file.translations, translation)
 	})
 
+	println("found keys ", keys_available.Cardinality())
+
 	keys_unused := keys_available.Clone()
 	keys_missing := mapset.NewThreadUnsafeSet()
 
 	// check keys in the code base
 	code_keys(dirs, func(path string, lc int, key string) {
-		// fmt.Printf("code: %s\n", key)
 		if keys_available.Contains(key) {
 			keys_unused.Remove(key)
 		} else {
@@ -371,19 +370,6 @@ func check(dirs []string) int {
 			ret = 1
 		}
 	})
-
-	// xib_keys(dirs, func(path string, key string){
-	//   if !strings.HasPrefix(key, "!") {
-	//     // fmt.Printf("xib: %s\n", key)
-	//     if keys_available.Contains(key) {
-	//       keys_unused.Remove(key)
-	//     } else {
-	//       keys_missing.Add(key)
-	//       fmt.Printf("%s:%d: error: xib uses missing key '%s'\n", path, 0, key)
-	//       ret = 1
-	//     }
-	//   }
-	// })
 
 	// unused
 	for key_unused := range keys_unused.Iter() {
@@ -431,10 +417,10 @@ func path() string {
 	xcode := env != ""
 
 	if xcode {
-		// fmt.Println("running via Xcode")
+		println("running via Xcode in", env)
 		return env
 	} else {
-		// fmt.Println("running via command line")
+		println("running via command line")
 		if len(os.Args) == 2 {
 			return os.Args[1]
 		} else {
@@ -454,7 +440,7 @@ func contains(s []string, e string) bool {
 
 func main() {
 
-	p_generate := flag.Bool("generate", false, "output keys")
+	p_generate := flag.Bool("write", false, "write keys to strings files")
 
 	flag.Parse()
 
@@ -476,7 +462,7 @@ func main() {
 		basename := filepath.Base(path)
 
 		if strings.HasPrefix(basename, ".") && len(basename) > 1 {
-			// println("skipping hidden ", path)
+			println("skipping hidden ", path)
 			if info.IsDir() {
 				return filepath.SkipDir
 			} else {
@@ -485,7 +471,7 @@ func main() {
 		}
 
 		if contains(lines, basename) {
-			// println("skipping ignored ", path)
+			println("skipping ignored ", path)
 			if info.IsDir() {
 				return filepath.SkipDir
 			} else {
