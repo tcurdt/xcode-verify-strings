@@ -325,7 +325,7 @@ func generate(dirs []string) int {
 		}
 
 		for _, key := range sortedSet(keys_missing) {
-			fmt.Fprintf(f, "\"%s\" = \"%s\"; # FIX\n", key, key)
+			fmt.Fprintf(f, "\"%s\" = \"%s#FIXME#\";\n", key, key)
 		}
 	}
 
