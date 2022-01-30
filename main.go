@@ -123,6 +123,8 @@ func strings_keys(dirs []string, yield func(path string, lc int, key string, val
 							}
 						case KEY:
 							switch {
+							case bytes.HasSuffix(b, []byte("\\\"")):
+								buffer.WriteRune(c)
 							case bytes.HasSuffix(b, []byte("\"")):
 								key = string(bytes.TrimSuffix(b, []byte("\"")))
 								buffer.Reset()
