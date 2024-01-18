@@ -414,7 +414,7 @@ func check(dirs []string) int {
 
 }
 
-func path() string {
+func path(flag string) string {
 	env := os.Getenv("PROJECT_DIR")
 	xcode := env != ""
 
@@ -422,12 +422,8 @@ func path() string {
 		println("running via Xcode in", env)
 		return env
 	} else {
-		println("running via command line")
-		if len(os.Args) == 2 {
-			return os.Args[1]
-		} else {
-			return "."
-		}
+		println("running via command line", flag)
+		return flag
 	}
 }
 
@@ -442,15 +438,12 @@ func contains(s []string, e string) bool {
 
 func main() {
 
-	p_generate := flag.Bool("write", false, "write keys to strings files")
+	p_write := flag.Bool("w", false, "write keys to strings files")
+	p_dir := flag.String("d", ".", "dir to search for files")
 
 	flag.Parse()
 
-	if len(flag.Args()) > 2 {
-		log.Fatal("too many args")
-	}
-
-	dir := path()
+	dir := path(*p_dir)
 
 	content, _ := ioutil.ReadFile(dir + "/.stringsignore")
 	lines := strings.Split(string(content), "\n")
@@ -502,7 +495,7 @@ func main() {
 	// 	}
 	// }
 
-	if *p_generate {
+	if *p_write {
 		os.Exit(generate(files_filtered))
 	} else {
 		os.Exit(check(files_filtered))

@@ -1,5 +1,5 @@
 NAME=xcode-verify-strings
-VERSION=v0.0.1
+VERSION=v0.0.2
 
 BUILDS=\
   darwin-arm64  \
