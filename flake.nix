@@ -1,5 +1,5 @@
 {
-  description = "xcode-verify-strings - verify Xcode .strings files";
+  description = "xcode-verify-strings - translate Xcode .strings files";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -26,7 +26,7 @@
             '';
 
             meta = with pkgs.lib; {
-              description = "xcode-verify-strings - verify Xcode .strings files";
+              description = "xcode-verify-strings - translate Xcode .strings files";
               license = licenses.asl20;
               maintainers = [ ];
             };
