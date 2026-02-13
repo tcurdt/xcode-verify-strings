@@ -39,7 +39,7 @@ package *targets: (build targets)
     done
 
 clean:
-    rm -rf dist bin
+    rm -rf dist bin result
 
 test: (build)
     go test
