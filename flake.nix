@@ -19,7 +19,7 @@
             src = ./.;
 
             subPackages = [ "." ];
-            vendorHash = "sha256-qHI3iv9Xa1rz6JOMrdN3NXjJBe/ocBfoQGmiRl+YTrc=";
+            vendorHash = "sha256-lkf23PZ/MEzZCeYef2P5YDeuiFHE8SsWmMFq+K/NgMw=";
 
             postInstall = ''
               mv $out/bin/v1 $out/bin/xcode-verify-strings
