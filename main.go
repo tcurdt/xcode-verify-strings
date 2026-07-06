@@ -13,7 +13,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/deckarep/golang-set"
+	mapset "github.com/deckarep/golang-set/v2"
 )
 
 type Translation struct {
@@ -59,15 +59,15 @@ func glob(dir string, ext string) ([]string, error) {
 	return files, err
 }
 
-func sortedSet(s mapset.Set) ([]string) {
-        keys := make([]string, s.Cardinality())
-        i := 0
-        for k := range s.Iter() {
-            keys[i] = k.(string)
-            i++
-        }
-        sort.Strings(keys)
-        return keys
+func sortedSet(s mapset.Set[string]) []string {
+	keys := make([]string, s.Cardinality())
+	i := 0
+	for k := range s.Iter() {
+		keys[i] = k
+		i++
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func strings_keys(dirs []string, yield func(path string, lc int, key string, value string, pre string, language string)) {
@@ -211,7 +211,7 @@ func code_keys(dirs []string, yield func(path string, lc int, key string)) {
 func show(dirs []string) int {
 	ret := 0
 
-	keys_available := mapset.NewThreadUnsafeSet()
+	keys_available := mapset.NewThreadUnsafeSet[string]()
 
 	strings_map := make(map[string]*StringsFile)
 
@@ -255,7 +255,7 @@ func generate(dirs []string) int {
 
 	ret := 0
 
-	keys_available := mapset.NewThreadUnsafeSet()
+	keys_available := mapset.NewThreadUnsafeSet[string]()
 
 	strings_map := make(map[string]*StringsFile)
 
@@ -276,8 +276,8 @@ func generate(dirs []string) int {
 		// println(strings_file.path, key, value, lc)
 	})
 
-	keys_used := mapset.NewThreadUnsafeSet()
-	keys_missing := mapset.NewThreadUnsafeSet()
+	keys_used := mapset.NewThreadUnsafeSet[string]()
+	keys_missing := mapset.NewThreadUnsafeSet[string]()
 
 	// check keys in the code base
 	code_keys(dirs, func(path string, lc int, key string) {
@@ -338,7 +338,7 @@ func check(dirs []string) int {
 
 	ret := 0
 
-	keys_available := mapset.NewThreadUnsafeSet()
+	keys_available := mapset.NewThreadUnsafeSet[string]()
 
 	strings_map := make(map[string]*StringsFile)
 
@@ -360,7 +360,7 @@ func check(dirs []string) int {
 	println("found keys ", keys_available.Cardinality())
 
 	keys_unused := keys_available.Clone()
-	keys_missing := mapset.NewThreadUnsafeSet()
+	keys_missing := mapset.NewThreadUnsafeSet[string]()
 
 	// check keys in the code base
 	code_keys(dirs, func(path string, lc int, key string) {
@@ -376,7 +376,7 @@ func check(dirs []string) int {
 	// unused
 	for key_unused := range keys_unused.Iter() {
 		for _, strings_file := range strings_map {
-			for _, translation := range strings_file.Translations(key_unused.(string)) {
+			for _, translation := range strings_file.Translations(key_unused) {
 				if !strings.HasPrefix(translation.key, "_") {
 					fmt.Printf("%s:%d: warning: '%s' has unused key '%s'\n", strings_file.path, translation.lc, strings_file.language, translation.key)
 				}
@@ -389,7 +389,7 @@ func check(dirs []string) int {
 	keys_needed := keys_available.Union(keys_missing)
 	for key_needed := range keys_needed.Iter() {
 		for _, strings_file := range strings_map {
-			key := key_needed.(string)
+			key := key_needed
 			translations := strings_file.Translations(key)
 			switch len(translations) {
 			case 0:
