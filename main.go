@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"sort"
 	"os"
@@ -445,7 +444,7 @@ func main() {
 
 	dir := path(*p_dir)
 
-	content, _ := ioutil.ReadFile(dir + "/.stringsignore")
+	content, _ := os.ReadFile(dir + "/.stringsignore")
 	lines := strings.Split(string(content), "\n")
 
 	files_filtered := []string{}
