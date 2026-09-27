@@ -6,8 +6,14 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
@@ -15,11 +21,11 @@
         packages = {
           default = pkgs.buildGoModule {
             pname = "xcode-verify-strings";
-            version = "0.0.2";
+            version = "1.0.0";
             src = ./.;
 
             subPackages = [ "." ];
-            vendorHash = "sha256-vv/sR6x0wcPfcT2N1Y12C4r+6ge6Re6TLPq5/e7HacI=";
+            vendorHash = "sha256-kMnqJUtfTtWwa3wbM4XOhPM1N9I9syCVGnhOQeExFAA=";
 
             postInstall = ''
               mv $out/bin/v1 $out/bin/xcode-verify-strings
